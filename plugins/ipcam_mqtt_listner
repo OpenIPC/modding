@@ -1,0 +1,46 @@
+#!/bin/sh
+# Simple Comand Plugin for MQTT OpenIPC mod
+# Author Philipp@inbox.ru 2021
+# Licence MIT
+# based on https://github.com/pkoevesdi/MQTT-Logger
+
+
+IPC=/mnt/mtd/ipcam.conf
+mpipe=/tmp/mqtt_pipe
+pidfile=/tmp/mqtt_sub_pidfile
+
+#check is mosquitto_sub runs, some clean ups
+kill -9 $(cat $pidfile)  2>/dev/null
+rm -f $mpipe $pidfile
+
+if [ -f ${IPC} ]; then
+  while read settings
+    do local ${settings}
+  done < ${IPC}
+  #
+  # Is Enabled MQTT
+  if [ ${mqtt_enable} = 1 ]; then
+	# create fifo file
+	([ ! -p "$mpipe" ]) && mkfifo $mpipe
+	# subscribe mosquitto toppic
+	(mosquitto_sub -h ${mqtt_server} -p ${mqtt_port} -u ${mqtt_login} -P ${mqtt_password} -t "${mqtt_login}/${device_name}/cmds" 1>$mpipe 2>/dev/null) &
+	# store mosquitto_sub pid in file
+	echo "$!" > $pidfile
+	# read subscribed data
+	echo read subscribed data
+	while read message <$mpipe
+	do
+	  # echo readed command for debug purpose
+	  echo "$message"
+	  # process commands
+	  case "$message" in
+		  ("snap")
+			/bin/ipcam_mqtt
+			;;
+		  ("reboot")
+			/sbin/reboot
+			;;
+		esac
+	done
+  fi
+fi
