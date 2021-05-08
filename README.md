@@ -1,5 +1,11 @@
 # IPCam modding
 
+[![Build](https://github.com/OpenIPC/modding/actions/workflows/main.yml/badge.svg)](https://github.com/OpenIPC/modding/actions/workflows/main.yml)
+![GitHub repo size](https://img.shields.io/github/repo-size/OpenIPC/modding)
+![GitHub issues](https://img.shields.io/github/issues/OpenIPC/modding)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/OpenIPC/modding)
+[![License](https://img.shields.io/github/license/OpenIPC/modding)](https://opensource.org/licenses/MIT)
+
 ## Downloads
 
 https://github.com/OpenIPC/modding/releases
