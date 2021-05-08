@@ -1,0 +1,107 @@
+#!/bin/sh
+#
+# ZFT Lab. 2018 | http://zftlab.org/pages/2018010700.html
+# Simple Plugin - System
+
+
+IPC=/mnt/mtd/ipcam.conf
+TMP=/var/tmp
+
+
+if [ -f ${IPC} ]; then
+  while read settings
+    do local ${settings}
+  done < ${IPC}
+  #
+  # Enable Cron daemon
+  if [ ${crond_enable} = 1 ]; then
+    if [ -f /sbin/crond ]; then
+      #
+      [ -d /mnt/mtd/crontabs ] || mkdir -p /mnt/mtd/crontabs
+      [ -f /mnt/mtd/crontabs/root ] || ( echo -e "#\n*/1   *     *     *     *    logger -s test 'Check running crond'\n#" >>/mnt/mtd/crontabs/root ;\n
+                                         echo -e "#\n*/3   *     *     *     *    /bin/rdate -s time.nist.gov\n#" >>/mnt/mtd/crontabs/root ;\n
+                                         echo -e "#\n*/1   *     *     *     *    /bin/ipcam_mqtt\n#" >>/mnt/mtd/crontabs/root ;\n
+                                         echo -e "#\n*/1   *     *     *     *    /bin/ipcam_telegram\n#" >>/mnt/mtd/crontabs/root ;\n
+                                         echo -e "#\n*/1   *     *     *     *    /bin/ipcam_webdav\n#" >>/mnt/mtd/crontabs/root ;\n
+                                         echo -e "#\n*/1   *     *     *     *    /bin/ipcam_yandex\n#" >>/mnt/mtd/crontabs/root ;\n
+                                        )
+      /sbin/crond -b -c /mnt/mtd/crontabs
+    fi
+  fi
+  #
+  # Enable FTP server
+  if [ ${ftpd_enable} = 1 ]; then
+    if [ -f /sbin/tcpsvd ]; then
+      if [ -f /sbin/ftpd ]; then
+        (while true ; do sleep 5; /sbin/tcpsvd -vE -l ${device_name} -u root 0.0.0.0 21 /sbin/ftpd -w / >/dev/null 2>&1; done) &
+      fi
+    fi
+  fi
+  #
+  # Enable SSH server
+  if [ ${sshd_enable} = 1 ]; then
+    if [ -f /sbin/dropbear ]; then
+      #
+      [ -d /mnt/mtd/dropbear ] || (mkdir -p /mnt/mtd/dropbear; chown root /etc/dropbear ; chmod 0700 /etc/dropbear)
+      [ -s /mnt/mtd/dropbear/dropbear_dss_host_key ] || dropbearkey -t rsa -f /mnt/mtd/dropbear/dropbear_dss_host_key
+      [ -s /mnt/mtd/dropbear/dropbear_rsa_host_key ] || dropbearkey -t rsa -f /mnt/mtd/dropbear/dropbear_rsa_host_key
+      /sbin/dropbear -P ${TMP}/dropbear.pid -p ${sshd_port} -K 300
+    fi
+  fi
+  #
+  # Enable console login system
+  if [ ${getty_enable} = 1 ]; then
+    if [ -f /sbin/getty ]; then
+      (while true ; do sleep 5; /sbin/getty -L /dev/ttyAMA0 115200 vt100 -n root >/dev/null 2>&1; done) &
+    fi
+  fi
+  #
+  # Enable USB storage
+  if [ ${storage_enable} = 1 ]; then
+    if [ -e /mnt/web/zftlab/lib/modules/usb-storage.ko ]; then
+      himm 0x20050084 0x001d2188
+      himm 0x20050078 0x1414c001
+      insmod /mnt/web/zftlab/lib/modules/usb-storage.ko
+    fi
+  fi
+  #
+  # Enable Telnet server
+  if [ ${telnetd_enable} = 1 ]; then
+    if [ -f /sbin/telnetd ]; then
+      /sbin/telnetd -p ${telnetd_port}
+    fi
+  fi
+  #
+  # Enable HTTP server (Octonix version)
+  if [ ${webface_enable} = 1 ]; then
+    if [ -f /sbin/httpd ]; then
+      echo -e "#\nA:*\n/cgi-bin:manager:${webface_password}\n#\n" >${TMP}/httpd.conf
+      /sbin/httpd -p ${webface_port} -h /mnt/web/zftlab/www -c ${TMP}/httpd.conf
+    fi
+  fi
+  #
+  # Telegram
+  if [ ${telegram_enable} = 1 ]; then
+    if [ -f /bin/ipcam_tgbot ]; then
+      if [ -f /mnt/mtd/telegram_offset ]; then
+        cp /mnt/mtd/telegram_offset /var/tmp/telegram_offset
+      fi
+      (while true ; do sleep 5; /bin/ipcam_tgbot >/dev/null 2>&1; done) &
+    fi
+  fi
+  #
+  # OSD test
+  if [ -f /etc/fVideo ]; then
+    MD5SUM1=$(md5sum /mnt/mtd/Config/Json/fVideo | awk '{print $1}')
+    MD5SUM2=$(md5sum /etc/fVideo | awk '{print $1}')
+    if [ ${MD5SUM1} = ${MD5SUM2} ]; then
+      logger -s test 'No OSD update'
+    else
+      cp /etc/fVideo /mnt/mtd/Config/Json/fVideo >/dev/null 2>&1
+      logger -s test 'Update file with OSD setting'
+    fi
+  fi
+  #
+fi
+
+exit 0

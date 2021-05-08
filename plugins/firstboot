@@ -1,0 +1,9 @@
+#!/bin/sh
+
+clear
+echo
+echo "Remove ModdingIPC configs and reboot device..."
+echo
+rm -vf /mnt/mtd/ipcam.conf /mnt/mtd/crontabs/root
+sleep 1
+reboot

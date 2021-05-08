@@ -1,0 +1,207 @@
+#!/bin/sh
+#
+# ZFT Lab. 1994-2018 - IPCam Combine | http://zftlab.org/pages/2018010700.html
+
+MAC=$(ifconfig eth0 | awk '/HWaddr/ {print $5}')
+PAS=$(echo ${MAC} | sha1sum | awk '{print $1}')
+TID=$(echo ${MAC} | tr -d ':')
+
+
+
+help() {
+    echo -e "\nPLEASE SELECT HARDWARE AND SERVICE IN COMMAND LINE"
+    echo -e "\nPossible hardware:\n  jvt\n  topsee\n  xm\n"
+    echo -e "\nPossible service:\n  ipeye\n"
+}
+
+
+hardware() {
+  case $hardware in
+
+    jvt)
+      RWC="/etc/"
+      IPC=${RWC}ipcam.conf
+      TMP=/var/run
+      RTSP1="rtsp://127.0.0.1:554/av0_0"
+      RTSP2="rtsp://127.0.0.1:554/av0_1"
+      (sleep 1; logger -t ipcam_combine "Device hardware type is JVT...") &
+    ;;
+
+    topsee)
+      #RWC="/etc/"
+      #IPC=${RWC}ipcam.conf
+      #TMP=/var/run
+      RTSP1=""
+      RTSP2=""
+      (sleep 1; logger -t ipcam_combine "Device hardware type is TOPSEE...") &
+    ;;
+
+    xm)
+      RWC="/mnt/mtd/"
+      IPC=${RWC}ipcam.conf
+      TMP=/var/tmp
+      PASSW=$(cat /mnt/mtd/Config/Account1 | jsonfilter -e '@.Users[@.Name="admin"].Password')
+      RTSP1="rtsp://127.0.0.1/user=admin&password=${PASSW}&channel=1&stream=0.sdp?real_stream"
+      RTSP2="rtsp://127.0.0.1/user=admin&password=${PASSW}&channel=1&stream=1.sdp?real_stream"
+      (sleep 1; logger -t ipcam_combine "Device hardware type is XM...") &
+    ;;
+
+  *)
+    help
+    ;;
+
+  esac
+}
+
+
+settings() {
+  if [ -f ${IPC} ]; then
+    while read settings
+      do export ${settings}  # Also can use export/local
+    done < ${IPC}
+    (sleep 1; logger -t ipcam_combine "Load settings from ${IPC} file...") &
+  else
+    ( echo "alarm_enable=0"
+      echo "alarm_port=15002"
+      echo "alarm_listen=0.0.0.0"
+      echo "alarm_command=/bin/ipcam_telegram"
+      echo "crond_enable=0"
+      echo "curl_timeout=30"
+      echo "device_name=IPCam"
+      echo "device_tid=${TID}"
+      echo "ftpd_enable=0"
+      echo "getty_enable=0"
+      echo "ipeye_enable=0"
+      echo "mqtt_enable=0"
+      echo "mqtt_server=mqtt.flymon.net"
+      echo "mqtt_port=1883"
+      echo "mqtt_login=ipcam@flymon.net"
+      echo "mqtt_password=test2018"
+      echo "osd_text=zftlab.org"
+      echo "osd_color=FFFFFF"
+      echo "snmpd_enable=0"
+      echo "snmpd_community=public"
+      echo "socks5_enable=0"
+      echo "socks5_server=my.proxy.org"
+      echo "socks5_port=8081"
+      echo "socks5_login=mylogin"
+      echo "socks5_password=mypass"
+      echo "sshd_enable=0"
+      echo "sshd_port=22"
+      echo "storage_enable=0"
+      echo "syslogd_enable=0"
+      echo "telegram_enable=0"
+      echo "telegram_group=-283722443"
+      echo "telegram_token=123:XYZ"
+      echo "telnetd_enable=1"
+      echo "telnetd_port=23"
+      echo "time_zone=UTC-3"
+      echo "vtund_enable=0"
+      echo "vtund_server=my.server.org"
+      echo "vtund_port=5000"
+      echo "vtund_password=${PAS}"
+      echo "webdav_enable=0"
+      echo "webdav_login=mylogin"
+      echo "webdav_password=mypass"
+      echo "webdav_server=my.server.org"
+      echo "webface_enable=0"
+      echo "webface_port=81"
+      echo "webface_password=1234"
+      echo "wifi_enable=0"
+      echo "wifi_ssid=MyWiFi"
+      echo "wifi_password=test2018"
+      echo "wifi_type=auto"
+      echo "wifi_iface=auto"
+      echo "wifi_psk=auto"
+      echo "wifi_proto=auto"
+      echo "wifi_auth=auto"
+      echo "wifi_network=dhcp"
+      echo "yandex_enable=0"
+      echo "yandex_folder=Public"
+      echo "yandex_login=mylogin"
+      echo "yandex_password=mypass"
+      echo "zftlab_version=20210215"
+    ) >${IPC}
+    (sleep 1; logger -t ipcam_combine "Write default settings to ${IPC} file...") &
+    #
+    while read settings
+      do export ${settings}
+    done < ${IPC}
+    (sleep 1; logger -t ipcam_combine "Load settings from ${IPC} file...") &
+    #
+    hostname IPCam
+  fi
+}
+
+
+service_alarm() {
+  if [ ${alarm_enable} = 1 ]; then
+    if [ -f /sbin/tcpsvd ]; then
+      (while true ; do sleep 10; tcpsvd -vE -l ${device_name} -u root ${alarm_listen} ${alarm_port} ${alarm_command} >/dev/null 2>&1; done) &
+    fi
+    logger -t ipcam_combine "Start alarm service..."
+  fi
+}
+
+service_ipeye() {
+  if [ ${ipeye_enable} = 1 ]; then
+    if [ -f /bin/ipeye ]; then
+      (while true ; do sleep 10; ipeye -config_dir="${RWC}" -streams="${RTSP1},${RTSP2}" -enable_debug=1 >/dev/null 2>&1; done) &
+    fi
+    # Integrated inside options: -http_camera_mode | -vendor | -http_logo_text | -http_logo_site | -http_logo_url
+    logger -t ipcam_combine "Start ipeye service..."
+  fi
+}
+
+service_snmpd() {
+  if [ ${snmpd_enable} = 1 ]; then
+    if [ -f /bin/snmpd ]; then
+      ( echo "#"
+        echo "agentAddress  udp:161"
+        echo "sysLocation   Ospedaletti, Imperia, IT"
+        echo "sysContact    ZFT Lab. <flyrouter@gmail.com>"
+        echo "rocommunity   ${snmpd_community}"
+        echo "disk          / 15%"
+        echo "load          12 10 5"
+        echo "#"
+      ) >${TMP}/snmpd.conf
+      snmpd -c ${TMP}/snmpd.conf
+    fi
+    logger -t ipcam_combine "Start snmpd service..."
+  fi
+}
+
+service_syslogd() {
+  if [ ${syslogd_enable} = 1 ]; then
+    if [ -f /sbin/klogd ]; then
+      /sbin/klogd
+    fi
+    if [ -f /sbin/syslogd ]; then
+      /sbin/syslogd -O /dev/null -C64
+    fi
+    logger -t ipcam_combine "Start syslogd service..."
+  fi
+}
+
+
+boot() {
+  hardware
+  settings
+  service_syslogd
+  service_alarm
+  service_ipeye
+  service_snmpd
+  #
+  /bin/ipcam_system
+  /bin/ipcam_tunnel
+  /bin/ipcam_wifi
+}
+
+
+if [ $# -ge 2 ]; then
+  hardware=$1
+  service=$2
+  boot
+else
+  help
+fi
