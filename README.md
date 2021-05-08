@@ -2,6 +2,7 @@
 
 **Advanced modifications of IP camera firmware from the [OpenIPC](https://openipc.org) project**
 
+[![CI status](https://img.shields.io/github/downloads/OpenIPC/modding/total.svg)](https://github.com/OpenIPC/modding/releases)
 ![GitHub repo size](https://img.shields.io/github/repo-size/OpenIPC/modding)
 ![GitHub issues](https://img.shields.io/github/issues/OpenIPC/modding)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/OpenIPC/modding)
