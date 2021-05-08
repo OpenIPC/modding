@@ -45,3 +45,5 @@ If you like our work, please consider supporting us on [Opencollective](https://
 * Remove old unused mqtt telemetry code (TNX XPhilipp)
 * Add ipcam_mqtt_listner plugin (TNX XPhilipp)
 * Update IPC_XiongMai_00002532_HI3516CV100 platform
+* Update IPC_XiongMai_00023650_XM510 platform
+* Update IPC_XiongMai_00023651_XM510 platform
