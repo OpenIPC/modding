@@ -1,5 +1,7 @@
 ## IPCam modding
 
+**Advanced modifications of IP camera firmware from the [OpenIPC](https://openipc.org) project**
+
 [![Build](https://github.com/OpenIPC/modding/actions/workflows/main.yml/badge.svg)](https://github.com/OpenIPC/modding/actions/workflows/main.yml)
 ![GitHub repo size](https://img.shields.io/github/repo-size/OpenIPC/modding)
 ![GitHub issues](https://img.shields.io/github/issues/OpenIPC/modding)
